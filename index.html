@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDLE Shell 3.10.6</title>
+    <link rel="icon" type="image/png"
+        href="https://i0.wp.com/junilearning.com/wp-content/uploads/2020/06/python-programming-language.webp?fit=1920%2C1920&ssl=1">
+
+    <style>
+        body,
+        html {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .idle-window {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            background-color: #f0f0f0;
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title-bar {
+            background-color: #f0f0f0;
+            padding: 4px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #dcdcdc;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .title-text {
+            font-size: 13px;
+            color: #000;
+            display: flex;
+            align-items: center;
+        }
+
+        .title-text img {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+        }
+
+        .window-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .control-button {
+            width: 45px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-family: 'Segoe MDL2 Assets', 'Arial';
+            cursor: default;
+        }
+
+        .control-button:hover {
+            background-color: #e6e6e6;
+        }
+
+        .close-button:hover {
+            background-color: #e81123;
+            color: white;
+        }
+
+        .menu-bar {
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-bottom: 1px solid #dcdcdc;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .menu-bar span {
+            padding: 4px 8px;
+            cursor: default;
+            border-radius: 2px;
+        }
+
+        .menu-bar span:hover {
+            background-color: #e0e8f0;
+            border: 1px solid #c0d0e0;
+            padding: 3px 7px;
+        }
+
+        .editor-container {
+            flex-grow: 1;
+            display: flex;
+            overflow-y: auto;
+            background-color: #ffffff;
+        }
+
+        .line-numbers {
+            color: #c2c2c2;
+            padding: 8px 4px 8px 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            text-align: right;
+            user-select: none;
+        }
+
+        .line-number {
+            position: relative;
+        }
+
+
+        .tooltip {
+            visibility: hidden;
+            width: 80px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            left: 105%;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .line-number .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: 100%;
+            margin-top: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent #555 transparent transparent;
+        }
+
+        .line-number .tooltip.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .shell-content {
+            flex-grow: 1;
+            padding: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #000000;
+            white-space: pre;
+        }
+
+        .shell-content code {
+            color: blue;
+        }
+
+        .shell-prompt {
+            color: #8b0000;
+        }
+
+        .status-bar {
+            background-color: #f0f0f0;
+            padding: 2px 10px;
+            font-size: 12px;
+            text-align: right;
+            border-top: 1px solid #dcdcdc;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="idle-window">
+        <div class="title-bar">
+            <div class="title-text">
+                <img src="https://www.python.org/static/favicon.ico" alt="Python Icon">
+                IDLE Shell 3.10.6
+            </div>
+        </div>
+
+        <div class="menu-bar">
+            <span>File</span>
+            <span>Edit</span>
+            <span>Shell</span>
+            <span>Debug</span>
+            <span>Options</span>
+            <span>Window</span>
+            <span>Help</span>
+        </div>
+        <div class="editor-container">
+            <div class="line-numbers" id="line-numbers"></div>
+            <div class="shell-content" id="shell-content">Python 3.10.6 (tags/v3.10.6:9c7b4bd, Aug 1 2022, 21:53:49)
+[MSC v.1932 64 bit (AMD64)] on win32
+Type <code>"help"</code>, <code>"copyright"</code>, <code>"credits"</code> or <code>"license()"</code>
+for more information.
+<span class="shell-prompt">>>></span>
+            </div>
+        </div>
+        <div class="status-bar">
+            Ln: 3 Col: 0
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Mappable sentences for multiples of 3 ---
+            const copyTextMap = {};
+            for (let i = 3; i <= 100; i += 3) {
+                copyTextMap[i] = `This is the special sentence for line ${i}.`;
+            }
+            // You can still customize specific ones
+            copyTextMap[3] = `
+            
+Program 1
+
+activity_main.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Hello World!"
+        android:textSize="30sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+MainActivity.java
+
+
+package com.example.hola; // Make sure this package name matches your project's package name
+
+import androidx.appcompat.app.AppCompatActivity;
+import android.os.Bundle;
+
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+    }
+}
+
+            `;
+            copyTextMap[6] = `
+## ✅ Program 2: Display message based on screen orientation
+
+
+AndroidManifest.xml
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ScreenOrientation"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity2"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
+
+activity_main.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/editText1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="This activity is portrait orientation"
+        android:textSize="22sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        android:layout_marginTop="124dp" />
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Launch next activity"
+        android:onClick="onClick"
+        app:layout_constraintTop_toBottomOf="@id/editText1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+MainActivity.java
+
+package com.bca.screenorientation;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+    }
+
+    public void onClick(View v) {
+        Intent intent = new Intent(MainActivity.this, MainActivity2.class);
+        startActivity(intent);
+    }
+}
+
+activity_main2.xml (for landscape screen)
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity2">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="This is landscape orientation"
+        android:textSize="22sp"
+        android:layout_marginTop="180dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+MainActivity2.java
+
+
+package com.bca.screenorientation;
+
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity2 extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main2);
+    }
+}
+
+
+            `;
+
+            copyTextMap[9] = `
+Program 3: Login Window using UI Controls
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity"
+    android:background="@drawable/bg_outer">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/bg_inner"
+        android:padding="30dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Login Page"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed"
+            android:textColor="@android:color/black"
+            android:paddingBottom="20dp" />
+
+        <EditText
+            android:id="@+id/editTextUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Username"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
+            android:id="@+id/editTextPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/buttonLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Login" />
+    </LinearLayout>
+</RelativeLayout>
+
+
+bg_inner.xml (inside res/drawable/ folder)
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:startColor="#84FFFF"
+        android:endColor="#FF0088"
+        android:angle="100" />
+    <corners android:radius="20dp" />
+</shape>
+
+bg_outer.xml (inside res/drawable/ folder)
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:startColor="#B388FF"
+        android:endColor="#397C9A"
+        android:angle="100" />
+    <corners android:radius="12dp" />
+</shape>
+
+MainActivity.java
+
+
+package com.bca.loginprgm;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    private EditText editTextUsername, editTextPassword;
+    private Button buttonLogin;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        editTextUsername = findViewById(R.id.editTextUsername);
+        editTextPassword = findViewById(R.id.editTextPassword);
+        buttonLogin = findViewById(R.id.buttonLogin);
+
+        buttonLogin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String username = editTextUsername.getText().toString().trim();
+                String password = editTextPassword.getText().toString().trim();
+
+                if (username.equals("admin") && password.equals("pass")) {
+                    Toast.makeText(MainActivity.this, "Login successful", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Invalid username or password", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+}
+
+            `;
+
+            copyTextMap[12] = `
+
+Program 4: Implicit and Explicit Intents
+
+activity_main.xml (Main screen with two buttons)
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/btnImplicit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Implicit Intent"
+        android:onClick="onImplicitButtonClicked" />
+
+    <Button
+        android:id="@+id/btnExplicit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Explicit Intent"
+        android:onClick="onExplicitButtonClicked" />
+</LinearLayout>
+
+activity_new.xml (Target activity for explicit intent)
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".NewActivity">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Welcome to Explicit Intent"
+        android:textSize="28sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+MainActivity.java
+
+package com.bca.intent;
+
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.view.View;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+    }
+
+    public void onImplicitButtonClicked(View view) {
+        Uri url = Uri.parse("https://www.google.com");
+        Intent intent = new Intent(Intent.ACTION_VIEW, url);
+        startActivity(intent);
+    }
+
+    public void onExplicitButtonClicked(View view) {
+        Intent intent = new Intent(MainActivity.this, NewActivity.class);
+        startActivity(intent);
+    }
+}
+
+
+
+NewActivity.java
+
+package com.bca.intent;
+
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class NewActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_new);
+    }
+}
+
+
+AndroidManifest.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.bca.intent">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.YourAppName">
+
+        <activity android:name=".NewActivity" />
+
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>
+
+            `;
+
+            copyTextMap[15] = `
+           
+            Program 5 Program 5: Create an application that displays custom designed Opening Screen.
+
+activity_main.xml (Main screen with an ImageView)
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:background="@android:color/black"
+    tools:context=".MainActivity">
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/sym_def_app_icon"
+        android:contentDescription="@string/app_name" />
+
+</RelativeLayout>
+
+MainActivity.java
+
+package com.example.hola;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.view.WindowManager;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    // Changed timeout to a more reasonable 3 seconds
+    private static final int SPLASH_SCREEN_TIME_OUT = 3000;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(MainActivity.this, MainScreen.class);
+                startActivity(i);
+                finish();
+            }
+        }, SPLASH_SCREEN_TIME_OUT);
+    }
+}
+
+
+
+MainScreen.java
+
+package com.example.hola;
+
+import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainScreen extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_mainscreen);
+    }
+}
+
+
+activity_mainscreen.xml (Main screen layout)
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#7E6C29"
+    android:gravity="center"
+    tools:context=".MainScreen">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Welcome to home Page"
+        android:textColor="@android:color/white"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+</RelativeLayout>
+
+
+AndroidManifest.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Hola">
+
+        <activity android:name=".MainScreen" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+    </application>
+
+</manifest>
+            `;
+
+            copyTextMap[18] = `
+            
+✅ 1. menus.xml (Menu Resource File res/menu/menus.xml)
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/php"
+        android:title="PHP" />
+    <item
+        android:id="@+id/java"
+        android:title="JAVA" />
+    <item
+        android:id="@+id/csharp"
+        android:title="C#" />
+</menu>
+
+✅ 2. activity_main.xml (Layout File)
+
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tap the three dots to open the menu"
+        android:textSize="18sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+✅ 3. MainActivity.java
+
+package com.example.hola; // your actual package name
+
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menus, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+    int id = item.getItemId();
+
+    if (id == R.id.php) {
+        Toast.makeText(this, "Php Page", Toast.LENGTH_SHORT).show();
+        return true;
+    } else if (id == R.id.java) {
+        Toast.makeText(this, "Java Page", Toast.LENGTH_SHORT).show();
+        return true;
+    } else if (id == R.id.csharp) {
+        Toast.makeText(this, "C# Page", Toast.LENGTH_SHORT).show();
+        return true;
+    } else {
+        return super.onOptionsItemSelected(item);
+    }
+}
+
+
+}
+
+
+✅ 4. AndroidManifest.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.bca.homescreen"> 
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light">
+        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>
+
+
+            `;
+
+            copyTextMap[21] = `
+
+Program 7: Read/write the Local data
+
+MainActivity.java
+
+package com.example.hola; // Make sure this package name matches your project
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    Button btnsave, btnnext;
+    EditText etUserName, etPassword;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        etUserName = findViewById(R.id.etUserName);
+        etPassword = findViewById(R.id.etPassword);
+        btnsave = findViewById(R.id.btnsave);
+        btnnext = findViewById(R.id.btnnext);
+
+        // Listener for the Save button
+        btnsave.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Get the data from EditTexts
+                String username = etUserName.getText().toString();
+                String password = etPassword.getText().toString();
+
+                // Writing data to SharedPreferences
+                SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+
+                editor.putString("username", username);
+                editor.putString("password", password);
+                editor.apply(); // Use apply() for asynchronous saving
+
+                Toast.makeText(getApplicationContext(), "Saved successfully", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        // Listener for the Next button
+        btnnext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, MainActivity2.class);
+                startActivity(intent);
+            }
+        });
+    }
+}
+
+MainActivity2.java
+
+package com.example.hola; // Make sure this package name matches your project
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity2 extends AppCompatActivity {
+
+    Button btnFetch;
+    EditText etUserName, etPassword;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main2);
+
+        btnFetch = findViewById(R.id.btnFetch);
+        etUserName = findViewById(R.id.etUserName);
+        etPassword = findViewById(R.id.etPassword);
+
+        btnFetch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Reading data from SharedPreferences
+                SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+
+                // Provide a default value "" if the key is not found
+                String username = sharedPreferences.getString("username", "");
+                String password = sharedPreferences.getString("password", "");
+
+                // Set the retrieved data into the EditTexts
+                etUserName.setText(username);
+                etPassword.setText(password);
+            }
+        });
+    }
+}
+
+
+✅ XML Layout Files (inside res/layout/)
+activity_main.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:layout_marginTop="80dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="User Name"
+        android:textSize="18sp" />
+
+    <EditText
+        android:id="@+id/etUserName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:hint="Enter username" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Password"
+        android:textSize="18sp" />
+
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textPassword"
+        android:hint="Enter password" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnsave"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Save" />
+
+        <Button
+            android:id="@+id/btnnext"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Next" />
+    </LinearLayout>
+
+</LinearLayout>
+
+
+activity_main2.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".MainActivity2">
+
+    <Button
+        android:layout_marginTop="80dp"
+        android:id="@+id/btnFetch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Fetch" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="User Name"
+        android:textSize="18sp"/>
+
+    <EditText
+        android:id="@+id/etUserName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:textColor="@android:color/black"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Password"
+        android:textSize="18sp"/>
+
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:textColor="@android:color/black"/>
+
+</LinearLayout>
+
+
+AndroidManifest.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.DayNight"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Add this declaration for the second activity -->
+        <activity android:name=".MainActivity2" />
+
+    </application>
+</manifest>
+
+              `;
+            // ---
+
+            const lineNumbersEl = document.getElementById('line-numbers');
+            const shellContentEl = document.getElementById('shell-content');
+            const totalLines = 100;
+
+            let numbersHTML = '';
+            for (let i = 1; i <= totalLines; i++) {
+                const isClickable = i % 3 === 0;
+                const clickableClass = isClickable ? 'clickable' : '';
+
+                numbersHTML += `<div class="line-number ${clickableClass}" data-line="${i}">${i}`;
+                if (isClickable) {
+                    numbersHTML += `<span class="tooltip">Copied!</span>`;
+                }
+                numbersHTML += `</div>`;
+            }
+            lineNumbersEl.innerHTML = numbersHTML;
+
+            let existingHTML = shellContentEl.innerHTML;
+            let extraLines = '';
+            for (let i = 4; i <= totalLines; i++) {
+                extraLines += '\n';
+            }
+            shellContentEl.innerHTML = existingHTML + extraLines;
+
+            // Add event listener ONLY to clickable line numbers
+            document.querySelectorAll('.line-number.clickable').forEach(item => {
+                item.addEventListener('click', event => {
+                    const lineNumber = event.currentTarget.dataset.line;
+                    const textToCopy = copyTextMap[lineNumber];
+
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        const tooltip = event.currentTarget.querySelector('.tooltip');
+                        tooltip.classList.add('show');
+                        setTimeout(() => {
+                            tooltip.classList.remove('show');
+                        }, 1500);
+                    }).catch(err => {
+                        console.error('Failed to copy: ', err);
+                    });
+                });
+            });
+
+            const editorContainer = document.querySelector('.editor-container');
+            editorContainer.addEventListener('scroll', () => {
+                const scrollTop = editorContainer.scrollTop;
+                const lineHeight = 14 * 1.4;
+                const currentLine = Math.floor(scrollTop / lineHeight) + 1;
+                const statusBar = document.querySelector('.status-bar');
+                statusBar.innerHTML = `Ln: ${currentLine}  Col: 0`;
+            });
+        });
+    </script>
+
+</body>
+
+</html>
